@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# Permisos para que Netlify pueda entrar
+# CONFIGURACIÓN DE CORS (Para que Netlify tenga permiso)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,7 +15,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# URL DE TU BASE DE DATOS
 DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a.oregon-postgres.render.com/pd8_db"
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class Usuario(BaseModel):
@@ -25,16 +27,22 @@ class Usuario(BaseModel):
 def get_conn():
     return psycopg2.connect(DATABASE_URL)
 
-# ESTO QUITARÁ EL "NOT FOUND"
+# ESTO ARREGLA EL "NOT FOUND"
 @app.get("/")
 def inicio():
-    return {"mensaje": "¡Servidor PD8 funcionando correctamente!"}
+    return {"status": "conectado", "mensaje": "Servidor PD8 funcionando perfectamente"}
 
 @app.on_event("startup")
 def startup():
     conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute("CREATE TABLE IF NOT EXISTS usuarios (id SERIAL PRIMARY KEY, email TEXT UNIQUE, password TEXT);")
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE,
+            password TEXT
+        );
+    """)
     conn.commit()
     conn.close()
 
