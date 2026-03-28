@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# 🔥 IMPORTANTE: CORS para Netlify
+# 🔥 CORS (CLAVE PARA NETLIFY)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,7 +15,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔗 TU URL DE RENDER (REEMPLAZA SI ES NECESARIO)
+# 🔗 PEGA TU URL REAL DE RENDER AQUÍ
 DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a.oregon-postgres.render.com/pd8_db"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -30,11 +30,11 @@ class Denuncia(BaseModel):
     ci: str
     descripcion: str
 
-# 🔌 CONEXIÓN BD
+# 🔌 CONEXIÓN
 def get_conn():
     return psycopg2.connect(DATABASE_URL)
 
-# 🧱 CREAR TABLAS AUTOMÁTICAMENTE
+# 🧱 CREAR TABLAS
 @app.on_event("startup")
 def startup():
     conn = get_conn()
@@ -129,5 +129,3 @@ def listar_denuncias():
     conn.close()
 
     return datos
-
-
