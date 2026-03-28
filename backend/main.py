@@ -4,13 +4,32 @@ import psycopg2
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a/pd8_db"
-SECRET = "CLAVE_SUPER_SECRETA"
+# 🔓 CORS (IMPORTANTE para Netlify)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.on_event("startup")
+# 🔗 TU DATABASE URL (la de Render)
+DATABASE_URL = "DATABASE_URL = "postgresql://pd8_db_user:xxxxx@dpg-xxxx.oregon-postgres.render.com/pd8_db"
+
+# 🔐 Seguridad
+SECRET = "CLAVE_SUPER_SECRETA"
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# 📦 MODELOS
+class Usuario(BaseModel):
+    email: str
+    password: str
+
+# 🚀 CREAR TABLAS AUTOMÁTICAMENTE
 def crear_tablas():
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
@@ -18,9 +37,8 @@ def crear_tablas():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS usuarios (
         id SERIAL PRIMARY KEY,
-        email TEXT,
-        password TEXT,
-        rol TEXT
+        email TEXT UNIQUE,
+        password TEXT
     );
     """)
 
@@ -37,76 +55,102 @@ def crear_tablas():
     conn.commit()
     conn.close()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+crear_tablas()
 
-class Usuario(BaseModel):
-    email: str
-    password: str
+# 🌐 RUTA BASE
+@app.get("/")
+def root():
+    return {"mensaje": "API funcionando correctamente"}
 
-class Denuncia(BaseModel):
-    nombre: str
-    ci: str
-    descripcion: str
-
+# 📝 REGISTRO
 @app.post("/registro")
-def registro(user: Usuario):
+def registrar(usuario: Usuario):
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
 
-    hash_pass = pwd_context.hash(user.password)
+    # Verificar si ya existe
+    cursor.execute("SELECT * FROM usuarios WHERE email=%s", (usuario.email,))
+    existente = cursor.fetchone()
+
+    if existente:
+        conn.close()
+        raise HTTPException(status_code=400, detail="El usuario ya existe")
+
+    # Encriptar contraseña
+    hashed_password = pwd_context.hash(usuario.password)
 
     cursor.execute(
-        "INSERT INTO usuarios (email, password, rol) VALUES (%s,%s,'admin')",
-        (user.email, hash_pass)
+        "INSERT INTO usuarios (email, password) VALUES (%s, %s)",
+        (usuario.email, hashed_password)
     )
 
     conn.commit()
     conn.close()
 
-    return {"msg": "Usuario creado"}
+    return {"mensaje": "Usuario registrado correctamente"}
 
+# 🔑 LOGIN
 @app.post("/login")
-def login(user: Usuario):
+def login(usuario: Usuario):
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
 
-    cursor.execute("SELECT password, rol FROM usuarios WHERE email=%s", (user.email,))
-    result = cursor.fetchone()
+    cursor.execute("SELECT * FROM usuarios WHERE email=%s", (usuario.email,))
+    user = cursor.fetchone()
 
-    if not result or not pwd_context.verify(user.password, result[0]):
-        raise HTTPException(status_code=401, detail="Error")
+    conn.close()
 
-    token = jwt.encode({
-        "sub": user.email,
-        "rol": result[1],
-        "exp": datetime.utcnow() + timedelta(hours=2)
-    }, SECRET)
+    if not user:
+        raise HTTPException(status_code=400, detail="Usuario no existe")
 
-    return {"token": token, "rol": result[1]}
+    # user[2] = password
+    if not pwd_context.verify(usuario.password, user[2]):
+        raise HTTPException(status_code=400, detail="Contraseña incorrecta")
 
-@app.post("/denuncias")
-def crear(d: Denuncia):
-    conn = psycopg2.connect(DATABASE_URL)
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "INSERT INTO denuncias (nombre, ci, descripcion) VALUES (%s,%s,%s)",
-        (d.nombre, d.ci, d.descripcion)
+    # Crear token
+    token = jwt.encode(
+        {
+            "sub": usuario.email,
+            "exp": datetime.utcnow() + timedelta(hours=2)
+        },
+        SECRET,
+        algorithm="HS256"
     )
+
+    return {
+        "mensaje": "Login exitoso",
+        "token": token
+    }
+
+# 📌 CREAR DENUNCIA
+@app.post("/denuncia")
+def crear_denuncia(denuncia: dict):
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO denuncias (nombre, ci, descripcion)
+        VALUES (%s, %s, %s)
+    """, (
+        denuncia.get("nombre"),
+        denuncia.get("ci"),
+        denuncia.get("descripcion")
+    ))
 
     conn.commit()
     conn.close()
 
-    return {"msg": "Guardado"}
+    return {"mensaje": "Denuncia registrada"}
 
+# 📋 VER DENUNCIAS
 @app.get("/denuncias")
-def listar():
+def ver_denuncias():
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM denuncias")
-    data = cursor.fetchall()
+    datos = cursor.fetchall()
 
     conn.close()
 
-    return data
+    return {"denuncias": datos}
