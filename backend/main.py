@@ -6,6 +6,10 @@ from jose import jwt
 from datetime import datetime, timedelta
 
 app = FastAPI()
+
+DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a/pd8_db"
+SECRET = "CLAVE_SUPER_SECRETA"
+
 @app.on_event("startup")
 def crear_tablas():
     conn = psycopg2.connect(DATABASE_URL)
@@ -32,9 +36,6 @@ def crear_tablas():
 
     conn.commit()
     conn.close()
-
-DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a/pd8_db"
-SECRET = "CLAVE_SUPER_SECRETA"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
