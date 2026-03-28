@@ -6,6 +6,32 @@ from jose import jwt
 from datetime import datetime, timedelta
 
 app = FastAPI()
+@app.on_event("startup")
+def crear_tablas():
+    conn = psycopg2.connect(DATABASE_URL)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        email TEXT,
+        password TEXT,
+        rol TEXT
+    );
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS denuncias (
+        id SERIAL PRIMARY KEY,
+        nombre TEXT,
+        ci TEXT,
+        descripcion TEXT,
+        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    conn.commit()
+    conn.close()
 
 DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a/pd8_db"
 SECRET = "CLAVE_SUPER_SECRETA"
