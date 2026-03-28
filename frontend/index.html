@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>PD8 Sistema</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body { font-family: Arial; background:#f4f6f9; }
+header { background:#1e3a8a; color:white; padding:10px; text-align:center;}
+.container{display:flex;}
+.sidebar{width:200px;background:#111827;color:white;padding:10px;}
+.sidebar button{width:100%;margin:5px;padding:10px;}
+.main{flex:1;padding:20px;}
+.card{background:white;padding:15px;margin:10px;border-radius:10px;}
+</style>
+
+</head>
+
+<body>
+
+<header><h1>Sistema PD-8</h1></header>
+
+<div class="container">
+
+<div class="sidebar">
+<button onclick="mostrar('dashboard')">Dashboard</button>
+<button onclick="mostrar('registro')">Registrar</button>
+<button onclick="mostrar('lista')">Lista</button>
+</div>
+
+<div class="main">
+
+<div id="login" class="card">
+<h2>Login</h2>
+<input id="email">
+<input id="password" type="password">
+<button onclick="login()">Ingresar</button>
+</div>
+
+<div id="dashboard" class="card" style="display:none;">
+<h2>Estadísticas</h2>
+<div id="total"></div>
+<canvas id="grafico"></canvas>
+<button onclick="exportarPDF()">PDF</button>
+</div>
+
+<div id="registro" class="card" style="display:none;">
+<input id="nombre">
+<input id="ci">
+<textarea id="desc"></textarea>
+<button onclick="guardar()">Guardar</button>
+</div>
+
+<div id="lista" class="card" style="display:none;">
+<input id="buscar" placeholder="Buscar">
+<button onclick="filtrar()">Filtrar</button>
+<table><tbody id="tabla"></tbody></table>
+</div>
+
+</div>
+</div>
+
+<script>
+let token="";
+let datos=[];
+
+function mostrar(v){
+document.querySelectorAll(".card").forEach(c=>c.style.display="none");
+document.getElementById(v).style.display="block";
+if(v==="lista") cargar();
+if(v==="dashboard") stats();
+}
+
+async function login(){
+let res=await fetch("https://TU_BACKEND/login",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({email:email.value,password:password.value})});
+let d=await res.json();
+token=d.token;
+mostrar("dashboard");
+}
+
+async function guardar(){
+await fetch("https://TU_BACKEND/denuncias",{method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({nombre:nombre.value,ci:ci.value,descripcion:desc.value})});
+alert("Guardado");
+}
+
+async function cargar(){
+let res=await fetch("https://TU_BACKEND/denuncias");
+datos=await res.json();
+render(datos);
+}
+
+function render(data){
+tabla.innerHTML="";
+data.forEach(d=>{
+tabla.innerHTML+=`<tr><td>${d[1]}</td></tr>`;
+});
+}
+
+function filtrar(){
+let t=buscar.value.toLowerCase();
+render(datos.filter(d=>d[1].toLowerCase().includes(t)));
+}
+
+let chart;
+async function stats(){
+let res=await fetch("https://TU_BACKEND/denuncias");
+let data=await res.json();
+total.innerText=data.length+" denuncias";
+
+if(chart) chart.destroy();
+
+chart=new Chart(grafico,{type:"bar",
+data:{labels:data.map(d=>d[1]),
+datasets:[{data:data.map(()=>1)}]}});
+}
+
+async function exportarPDF(){
+const {jsPDF}=window.jspdf;
+const doc=new jsPDF();
+doc.text("Reporte",10,10);
+doc.save("reporte.pdf");
+}
+</script>
+
+</body>
+</html>

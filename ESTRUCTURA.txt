@@ -1,0 +1,10 @@
+PD8-PYTHON-PRO/
+│
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│
+├── frontend/
+│   ├── index.html
+│
+└── database.sql
