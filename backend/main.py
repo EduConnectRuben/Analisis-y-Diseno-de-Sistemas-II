@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# 🔥 CORS (CLAVE PARA NETLIFY)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,117 +14,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🔗 PEGA TU URL REAL DE RENDER AQUÍ
+# ✅ AQUÍ VA LA URL QUE MOSTRASTE EN TU CAPTURA
 DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a.oregon-postgres.render.com/pd8_db"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# 📦 MODELOS
 class Usuario(BaseModel):
     email: str
     password: str
 
-class Denuncia(BaseModel):
-    nombre: str
-    ci: str
-    descripcion: str
-
-# 🔌 CONEXIÓN
 def get_conn():
     return psycopg2.connect(DATABASE_URL)
 
-# 🧱 CREAR TABLAS
 @app.on_event("startup")
 def startup():
     conn = get_conn()
     cursor = conn.cursor()
-
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS usuarios (
-        id SERIAL PRIMARY KEY,
-        email TEXT UNIQUE,
-        password TEXT
-    );
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id SERIAL PRIMARY KEY,
+            email TEXT UNIQUE,
+            password TEXT
+        );
     """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS denuncias (
-        id SERIAL PRIMARY KEY,
-        nombre TEXT,
-        ci TEXT,
-        descripcion TEXT
-    );
-    """)
-
     conn.commit()
     conn.close()
 
-# 📝 REGISTRO
 @app.post("/registro")
 def registro(user: Usuario):
     conn = get_conn()
     cursor = conn.cursor()
-
-    hashed_password = pwd_context.hash(user.password)
-
+    hashed = pwd_context.hash(user.password)
     try:
-        cursor.execute(
-            "INSERT INTO usuarios (email, password) VALUES (%s, %s)",
-            (user.email, hashed_password)
-        )
+        cursor.execute("INSERT INTO usuarios (email, password) VALUES (%s, %s)", (user.email, hashed))
         conn.commit()
-        return {"mensaje": "Usuario registrado"}
+        return {"mensaje": "registrado"}
     except:
-        raise HTTPException(status_code=400, detail="Usuario ya existe")
+        raise HTTPException(status_code=400, detail="El usuario ya existe")
     finally:
         conn.close()
 
-# 🔐 LOGIN
 @app.post("/login")
 def login(user: Usuario):
     conn = get_conn()
     cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT password FROM usuarios WHERE email=%s",
-        (user.email,)
-    )
+    cursor.execute("SELECT password FROM usuarios WHERE email=%s", (user.email,))
     result = cursor.fetchone()
     conn.close()
-
-    if not result:
-        raise HTTPException(status_code=400, detail="Usuario no encontrado")
-
-    if not pwd_context.verify(user.password, result[0]):
-        raise HTTPException(status_code=400, detail="Contraseña incorrecta")
-
-    return {"mensaje": "Login exitoso"}
-
-# 📌 CREAR DENUNCIA
-@app.post("/denuncias")
-def crear_denuncia(d: Denuncia):
-    conn = get_conn()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "INSERT INTO denuncias (nombre, ci, descripcion) VALUES (%s, %s, %s)",
-        (d.nombre, d.ci, d.descripcion)
-    )
-
-    conn.commit()
-    conn.close()
-
-    return {"mensaje": "Denuncia creada"}
-
-# 📄 LISTAR DENUNCIAS
-@app.get("/denuncias")
-def listar_denuncias():
-    conn = get_conn()
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM denuncias")
-    datos = cursor.fetchall()
-
-    conn.close()
-
-    return datos
+    if not result or not pwd_context.verify(user.password, result[0]):
+        raise HTTPException(status_code=400, detail="Credenciales incorrectas")
+    return {"mensaje": "ok"}
