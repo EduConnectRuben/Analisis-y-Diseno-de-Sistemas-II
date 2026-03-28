@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 # 🔗 TU DATABASE URL (la de Render)
-DATABASE_URL = "DATABASE_URL = "postgresql://pd8_db_user:xxxxx@dpg-xxxx.oregon-postgres.render.com/pd8_db"
+DATABASE_URL = "postgresql://pd8_db_user:9LmN3qxtlJC969WX8yeUq7BRmkgr68sV@dpg-d73srcua2pns73acu8qg-a.oregon-postgres.render.com/pd8_db"
 
 # 🔐 Seguridad
 SECRET = "CLAVE_SUPER_SECRETA"
